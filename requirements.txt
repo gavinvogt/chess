@@ -1,0 +1,5 @@
+tkinter
+Pillow
+pyperclip
+ctypes
+pickle
