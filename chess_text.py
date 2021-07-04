@@ -40,15 +40,20 @@ def main():
 
     board.print_board()
     move_str = ""
-    while move_str != 'quit':
+    while True:
+        # Get the move
         if board.white_to_move():
             color_char = 'w'
         else:
             color_char = 'b'
         move_str = input(f"Move ({board.fullmove()}{color_char}): ")
-        if move_str.strip().upper() == 'FEN':
+        upper_move = move_str.strip().upper()
+        if upper_move == 'FEN':
             print(board.to_fen())
             continue
+        elif upper_move in ('QUIT', 'EXIT'):
+            print("Goodbye!")
+            return
         move = board.parse_move(move_str)
         if move is not None and attempt_move(game, board, move):
             # Update the board reference and print new state
