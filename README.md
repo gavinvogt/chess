@@ -12,6 +12,10 @@ to allow undoing the last move, copying the FEN notation of the current position
 and starting a new game. Upon closing, the game automatically saves the state of the game to
 be reloaded next time it is opened.
 
+This version was designed using `tkinter` for the graphical interface. If there are any errors
+running the GUI version, see `requirements.txt` to verify that all the required libraries are
+installed on your device. The most likely culprits are `Pillow` and `pyperclip`.
+
 # Text Version
 `chess_text.py`
 
