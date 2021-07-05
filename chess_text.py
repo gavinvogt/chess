@@ -33,6 +33,8 @@ def attempt_move(game, board, move):
     return False
 
 def main():
+    print("CHESS! Text version, written by Gavin Vogt\n")
+    
     # Create the chess game and starting position
     game = ChessGame()
     board = BoardState()
