@@ -67,6 +67,8 @@ class ChessGui(tkinter.Tk):
             game.push(BoardState())
         self._board_canvas = BoardCanvas(self, theme, game.current_state())
         self._board_canvas.grid(row=0, column=0, rowspan=4)
+        tkinter.Label(self, text=" Written by Gavin Vogt", bd=1, relief=tkinter.SUNKEN,
+            anchor=tkinter.W).grid(row=4, column=0, columnspan=4, sticky=tkinter.E + tkinter.W)
         self._board_canvas.add_observer(self)
         self._set_up_themes(theme)
         self._set_up_notation()
@@ -103,7 +105,7 @@ class ChessGui(tkinter.Tk):
         '''
         Sets up the notation widget for displaying the chess game notation
         '''
-        tkinter.Label(self, text="Notation").grid(row=1, column=1, columnspan=2)
+        tkinter.Label(self, text="Notation").grid(row=1, column=1, columnspan=3)
         self._notation = NotationWidget(self)
         self._notation.grid(row=2, column=1, columnspan=3, padx=5, sticky=tkinter.N)
 
