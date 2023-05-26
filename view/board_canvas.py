@@ -10,6 +10,7 @@ from PIL import ImageTk
 
 # my code
 from model import BoardState, Coordinate, moves
+from view.themes import Theme
 from .pawn_promotion_popup import PawnPromotionPopup
 from .view_utils import piece_to_image
 
@@ -64,7 +65,7 @@ class BoardCanvas(tkinter.Canvas):
     This class represents the Canvas to use to draw the board
     """
 
-    def __init__(self, tk, theme, board: BoardState):
+    def __init__(self, tk: tkinter.Tk, theme: Theme, board: BoardState):
         """
         Creates the canvas that the chess board will be drawn on
         tk: root tkinter object
@@ -161,14 +162,14 @@ class BoardCanvas(tkinter.Canvas):
         except ValueError:
             pass
 
-    def _notify_observers(self, move, new_board):
+    def _notify_observers(self, move: moves.Move, new_board: BoardState):
         """
         Notifies all observers of the move that was made
         """
         for observer in self._observers:
             observer.notify(move, new_board)
 
-    def set_theme(self, new_theme):
+    def set_theme(self, new_theme: Theme):
         """
         Sets the new theme to use
         new_theme: Theme to update to
@@ -274,7 +275,7 @@ class BoardCanvas(tkinter.Canvas):
 
     def _create_squares(self):
         # Draw the board
-        self._squares = []
+        self._squares: list[list[Square]] = []
         for row in range(1, 9):
             self._squares.append([])
             for col in range(1, 9):
