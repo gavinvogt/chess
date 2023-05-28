@@ -17,6 +17,7 @@ from model import ChessGame, BoardState, GameResult
 from model.moves import Move
 from view import (
     BoardCanvas,
+    Perspective,
     NotationWidget,
     WoodTheme,
     DarkTheme,
@@ -36,6 +37,11 @@ THEMES = {
         LightTheme(),
         WoodTheme(),
     )
+}
+
+PERSPECTIVES = {
+    perpective.get_name(): perpective
+    for perpective in (Perspective.WHITE, Perspective.BLACK, Perspective.TO_MOVE)
 }
 
 SAVEFILE = "game.pickle"
@@ -66,7 +72,7 @@ class ChessGui(tkinter.Tk):
     This class represents the GUI for the entire chess game
     """
 
-    def __init__(self, game: ChessGame, theme: Theme):
+    def __init__(self, game: ChessGame, theme: Theme, perspective: Perspective):
         """
         Constructs a new chess game GUI
         game: ChessGame to store the game progress in
@@ -78,24 +84,25 @@ class ChessGui(tkinter.Tk):
         self._game = game
         if len(game) == 0:
             game.push(BoardState())
-        self._board_canvas = BoardCanvas(self, theme, game.current_state())
-        self._board_canvas.grid(row=0, column=0, rowspan=4)
+        self._board_canvas = BoardCanvas(self, theme, perspective, game.current_state())
+        self._board_canvas.grid(row=0, column=0, rowspan=5)
         tkinter.Label(
             self,
             text=" Written by Gavin Vogt",
             bd=1,
             relief=tkinter.SUNKEN,
             anchor=tkinter.W,
-        ).grid(row=4, column=0, columnspan=4, sticky=tkinter.E + tkinter.W)
+        ).grid(row=5, column=0, columnspan=4, sticky=tkinter.E + tkinter.W)
         self._board_canvas.add_observer(self)
         self._set_up_themes(theme)
+        self._set_up_perspectives(perspective)
         self._set_up_notation()
         self._set_up_undo_button()
         tkinter.Button(self, text="Copy FEN", command=self._copy_fen_to_clipboard).grid(
-            row=3, column=2, padx=(5, 0), sticky=tkinter.E + tkinter.W
+            row=4, column=2, padx=(5, 0), sticky=tkinter.E + tkinter.W
         )
         tkinter.Button(self, text="New Game", command=self._new_game).grid(
-            row=3, column=3, padx=(5, 5), sticky=tkinter.E + tkinter.W
+            row=4, column=3, padx=(5, 5), sticky=tkinter.E + tkinter.W
         )
         self.bind("<Control-w>", lambda _: self.quit())
         self.protocol("WM_DELETE_WINDOW", self.quit)
@@ -126,13 +133,33 @@ class ChessGui(tkinter.Tk):
         )
         menu.grid(row=0, column=3, padx=(2, 7), pady=7, sticky=tkinter.N)
 
+    def _set_up_perspectives(self, initial_perspective: Perspective):
+        """
+        Sets up the theme selection menu
+        initial_theme: Theme to start with
+        """
+        option_selected = tkinter.StringVar()
+        option_selected.set(initial_perspective.get_name())
+        menu = tkinter.OptionMenu(
+            self,
+            option_selected,
+            *PERSPECTIVES.keys(),
+            command=lambda choice: self._board_canvas.set_perspective(
+                PERSPECTIVES[choice]
+            )
+        )
+        tkinter.Label(self, text="Select Perspective:").grid(
+            row=1, column=1, columnspan=2, padx=3, pady=14, sticky=tkinter.NE
+        )
+        menu.grid(row=1, column=3, padx=(2, 7), pady=7, sticky=tkinter.N)
+
     def _set_up_notation(self):
         """
         Sets up the notation widget for displaying the chess game notation
         """
-        tkinter.Label(self, text="Notation").grid(row=1, column=1, columnspan=3)
+        tkinter.Label(self, text="Notation").grid(row=2, column=1, columnspan=3)
         self._notation = NotationWidget(self)
-        self._notation.grid(row=2, column=1, columnspan=3, padx=5, sticky=tkinter.N)
+        self._notation.grid(row=3, column=1, columnspan=3, padx=5, sticky=tkinter.N)
 
     def _set_up_undo_button(self):
         """
@@ -140,7 +167,7 @@ class ChessGui(tkinter.Tk):
         """
         self._undo_button = tkinter.Button(self, text="Undo", command=self._undo_last)
         self._undo_button.grid(
-            row=3, column=1, padx=(5, 0), sticky=tkinter.E + tkinter.W
+            row=4, column=1, padx=(5, 0), sticky=tkinter.E + tkinter.W
         )
         self._check_undo_validity()
 
@@ -235,15 +262,16 @@ class ChessGui(tkinter.Tk):
 
 
 def main():
-    # Choose the theme
+    # Choose the default theme and perspective
     theme = WoodTheme()
+    perspective = Perspective.WHITE
 
     # Create the chess game
     game = load_game()
     if game is None:
         game = ChessGame()
         game.push(BoardState())
-    gui = ChessGui(game, theme)
+    gui = ChessGui(game, theme, perspective)
     gui.mainloop()
 
 

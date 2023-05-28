@@ -7,6 +7,8 @@ This program represents the canvas for the board.
 # dependencies
 import tkinter
 from PIL import ImageTk
+from enum import Enum, auto
+from typing import Optional
 
 # my code
 from model import BoardState, Coordinate, moves
@@ -27,6 +29,15 @@ TEXT_FONT = ("Garamond", 15)
 CIRCLE_RADIUS = 16
 
 
+class Perspective(Enum):
+    WHITE = auto()
+    BLACK = auto()
+    TO_MOVE = auto()
+
+    def get_name(self):
+        return " ".join(self.name.lower().capitalize().split("_"))
+
+
 class Square:
     """
     This class represents a square on the chess board, holding information
@@ -43,7 +54,7 @@ class Square:
         self._id = oid
         self.focus = False
         self.highlight = True
-        self.move = None
+        self.move: Optional[moves.Move] = None
 
     def get_id(self):
         """
@@ -65,7 +76,9 @@ class BoardCanvas(tkinter.Canvas):
     This class represents the Canvas to use to draw the board
     """
 
-    def __init__(self, tk: tkinter.Tk, theme: Theme, board: BoardState):
+    def __init__(
+        self, tk: tkinter.Tk, theme: Theme, perspective: Perspective, board: BoardState
+    ):
         """
         Creates the canvas that the chess board will be drawn on
         tk: root tkinter object
@@ -84,12 +97,13 @@ class BoardCanvas(tkinter.Canvas):
             TOTAL_LENGTH - BOARD_OUTLINE,
             width=0,
         )
+        self._perspective = perspective
         self._set_up_notation()
         self._create_squares()
         self._create_color_circle()
 
         self.set_theme(theme)
-        self._images = []
+        self._images: list[ImageTk.PhotoImage] = []
         self.bind("<Button-1>", self.on_left_click)
         self.set_board(board)
 
@@ -100,10 +114,15 @@ class BoardCanvas(tkinter.Canvas):
         theme changes.
         """
         self._notation_labels: list[tkinter.Label] = []
+        white_perspective = self._is_white_perspective()
+
+        # Draw all the file letters
         for col in range(1, 9):
             # Label on top
             x, y = self._square_to_coords(8, col)
             x += TOTAL_SQUARE // 2
+            if not white_perspective:
+                y -= 7 * TOTAL_SQUARE
             y -= BOARD_BORDER + BOARD_OUTLINE // 2
             top_label = tkinter.Label(self, text="abcdefgh"[col - 1], font=TEXT_FONT)
             top_label.place(x=x, y=y, anchor=tkinter.CENTER)
@@ -111,13 +130,19 @@ class BoardCanvas(tkinter.Canvas):
 
             # Label on bottom
             _, y = self._square_to_coords(1, col)
+            if not white_perspective:
+                y += 7 * TOTAL_SQUARE
             y += TOTAL_SQUARE + BOARD_BORDER + BOARD_OUTLINE // 2
             bottom_label = tkinter.Label(self, text="abcdefgh"[col - 1], font=TEXT_FONT)
             bottom_label.place(x=x, y=y, anchor=tkinter.CENTER)
             self._notation_labels.append(bottom_label)
+
+        # Draw all the rank numbers
         for row in range(1, 9):
             # Label on the left
             x, y = self._square_to_coords(row, 1)
+            if not white_perspective:
+                x -= 7 * TOTAL_SQUARE
             x -= BOARD_BORDER + BOARD_OUTLINE // 2
             y += TOTAL_SQUARE // 2
             left_label = tkinter.Label(self, text=str(row), font=TEXT_FONT)
@@ -126,6 +151,8 @@ class BoardCanvas(tkinter.Canvas):
 
             # Label on the right
             x, _ = self._square_to_coords(row, 8)
+            if not white_perspective:
+                x += 7 * TOTAL_SQUARE
             x += TOTAL_SQUARE + BOARD_BORDER + BOARD_OUTLINE // 2
             right_label = tkinter.Label(self, text=str(row), font=TEXT_FONT)
             right_label.place(x=x, y=y, anchor=tkinter.CENTER)
@@ -169,6 +196,15 @@ class BoardCanvas(tkinter.Canvas):
         for observer in self._observers:
             observer.notify(move, new_board)
 
+    def set_perspective(self, new_perspective: Perspective):
+        """
+        Sets the perspective to use
+        new_perspective: Perspective to update to
+        """
+        self._perspective = new_perspective
+        self._draw_clean_board()
+        self.update()
+
     def set_theme(self, new_theme: Theme):
         """
         Sets the new theme to use
@@ -192,13 +228,30 @@ class BoardCanvas(tkinter.Canvas):
         Sets the new board to draw
         new_board: BoardState to update to
         """
+        old_perspective = self._is_white_perspective()
         self._board = new_board
-        self._reset_squares()
-        self._update_squares()
+        if old_perspective != self._is_white_perspective():
+            # Perspective changed; need to redraw the board
+            self._draw_clean_board()
+        else:
+            # Just reset and update the squares
+            self._reset_squares()
+            self._update_squares()
         if new_board.white_to_move():
             self.itemconfig(self._color_circle, fill="white")
         else:
             self.itemconfig(self._color_circle, fill="black")
+        self._draw_pieces()
+
+    def _draw_clean_board(self):
+        """
+        Redraws the board and pieces.
+        NOTE: Things could be done in a cleaner manner
+        """
+        self._create_squares()
+        self._reset_squares()
+        self._set_up_notation()
+        self.set_theme(self._theme)  # Just using this to update the notation labels
         self._draw_pieces()
 
     def _reset_squares(self):
@@ -213,7 +266,7 @@ class BoardCanvas(tkinter.Canvas):
         """
         Clears the list of images and redraws all the pieces
         """
-        # Draw the board
+        # Draw the pieces on the board
         self._images.clear()
         for row in range(1, 9):
             for col in range(1, 9):
@@ -240,15 +293,17 @@ class BoardCanvas(tkinter.Canvas):
             # Valid click location
             piece = self._board.get_piece(row, col)
             if piece is not None and piece.is_white() == self._board.white_to_move():
+                # Clicked on one of the current player's pieces
                 self._reset_squares()
                 possible_moves = piece.get_moves(
                     self._board, Coordinate.from_coords(row, col)
                 )
-                if len(possible_moves) > 0:
-                    # Place focus on clicked square
-                    self._squares[row - 1][col - 1].focus = True
+
+                # Place focus on clicked square
+                self._squares[row - 1][col - 1].focus = True
+
+                # Highlight all the target squares
                 for move in possible_moves:
-                    # Highlight all the target squares
                     row, col = move.target.row, move.target.col
                     square = self._squares[row - 1][col - 1]
                     square.highlight = True
@@ -319,8 +374,17 @@ class BoardCanvas(tkinter.Canvas):
         col: int, representing the column of the square (1 - 8)
         Return: (x, y) pixel location
         """
-        x = (col - 1) * TOTAL_SQUARE + BOARD_OUTLINE + BOARD_BORDER
-        y = (8 - row) * TOTAL_SQUARE + BOARD_OUTLINE + BOARD_BORDER
+        if self._is_white_perspective():
+            # White orientation
+            x = col - 1
+            y = 8 - row
+        else:
+            # Black orientation
+            x = 8 - col
+            y = row - 1
+
+        x = x * TOTAL_SQUARE + BOARD_OUTLINE + BOARD_BORDER
+        y = y * TOTAL_SQUARE + BOARD_OUTLINE + BOARD_BORDER
         return x, y
 
     def _coords_to_square(self, x: int, y: int):
@@ -331,7 +395,27 @@ class BoardCanvas(tkinter.Canvas):
         Return: (row, col), representing the square (1 - 8 for each)
         """
         x -= BOARD_OUTLINE + BOARD_BORDER
-        col = 1 + x // TOTAL_SQUARE
         y -= BOARD_OUTLINE + BOARD_BORDER
-        row = 8 - y // TOTAL_SQUARE
+        if self._is_white_perspective():
+            # White orientation
+            col = 1 + x // TOTAL_SQUARE
+            row = 8 - y // TOTAL_SQUARE
+        else:
+            # Black orientation
+            col = 8 - x // TOTAL_SQUARE
+            row = 1 + y // TOTAL_SQUARE
+
         return (row, col)
+
+    def _is_white_perspective(self):
+        """
+        Checks if the board is currently showing white's perspective.
+        Return: True if white, False if black
+        """
+        match self._perspective:
+            case Perspective.WHITE:
+                return True
+            case Perspective.BLACK:
+                return False
+            case Perspective.TO_MOVE:
+                return self._board.white_to_move()

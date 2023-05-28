@@ -11,7 +11,7 @@ Used tutorial at https://blog.teclado.com/tkinter-scrollable-frames/
 import tkinter
 from tkinter import ttk
 
-WIDGET_HEIGHT = 590
+WIDGET_HEIGHT = 545
 WIDGET_WIDTH = 230
 MOVE_WIDTH = 48
 NOTATION_WIDTH = (WIDGET_WIDTH - MOVE_WIDTH) // 2
