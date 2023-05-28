@@ -292,7 +292,10 @@ class BoardCanvas(tkinter.Canvas):
         if 1 <= row <= 8 and 1 <= col <= 8:
             # Valid click location
             piece = self._board.get_piece(row, col)
-            if piece is not None and piece.is_white() == self._board.white_to_move():
+            if self._squares[row - 1][col - 1].focus:
+                # Clicked on a square that was already focused; remove the focus
+                self._reset_squares()
+            elif piece is not None and piece.is_white() == self._board.white_to_move():
                 # Clicked on one of the current player's pieces
                 self._reset_squares()
                 possible_moves = piece.get_moves(
